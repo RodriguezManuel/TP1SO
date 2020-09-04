@@ -1,6 +1,8 @@
 #Binary Files
 *.bin
 *.sys
+master
+slave
 
 #Object files
 *.o
