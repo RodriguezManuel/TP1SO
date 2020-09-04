@@ -1,0 +1,8 @@
+#Binary Files
+*.bin
+*.sys
+
+#Object files
+*.o
+*.bash_history
+*.out
