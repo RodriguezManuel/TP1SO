@@ -24,7 +24,7 @@ int main(int argc, const char *argv[]){
 
     for(int i = 0; i < MAX_SLAVE; i++){
         for(int j = 1; j < FILECOUNT+1 && argsConsumed < argc; j++)
-            pathVec[j] = argv[argsConsummed++];
+            pathVec[j] = argv[argsConsumed++];
         
         if(argsConsumed == argc)
             break;

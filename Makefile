@@ -7,7 +7,7 @@ all: slave master
 slave: slave.c
 	$(CC) $(CFLAGS) slave.c -o slave
 
-master: master
+master: master.c
 	$(CC) $(CFLAGS) master.c -o master
 
 clean:
