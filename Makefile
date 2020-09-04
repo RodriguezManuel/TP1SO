@@ -1,7 +1,11 @@
+CC = gcc
+
+CFLAGS = -Wall -g
+
 all: slave
 
-slave:	slave.c
-	gcc -Wall -g -std=c99 slave.c -o slave
+slave: slave.c
+	$(CC) $(CFLAGS) slave.c -o slave
 
 clean:
 	rm -rf slave
