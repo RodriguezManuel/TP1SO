@@ -6,3 +6,6 @@
 *.o
 *.bash_history
 *.out
+
+#CNF Folder
+cnf/
