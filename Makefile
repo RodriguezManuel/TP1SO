@@ -1,13 +1,16 @@
 CC = gcc
 
-CFLAGS = -Wall -g
+CFLAGS = -Wall -g -std=gnu99
 
-all: slave
+all: slave master
 
 slave: slave.c
 	$(CC) $(CFLAGS) slave.c -o slave
 
+master: master
+	$(CC) $(CFLAGS) master.c -o master
+
 clean:
-	rm -rf slave
+	rm -rf slave master
 
 .PHONY:	all clean
