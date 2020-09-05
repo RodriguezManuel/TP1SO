@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <linux/limits.h>
 #include <string.h>
+#include <stdlib.h>
 
 #define COMMAND_MAX PATH_MAX + 255
 #define OUTPUT_MAX 1024
@@ -10,26 +11,30 @@ int processCNF(const char *path);
 
 int main(int argc, const char* argv[]){
     if(argc < 2){
+        perror("BETO");
         return -1; //ver si hay que refinar el tratamiento de errores aca
     }
     
     int ret;
-
     for(int i = 1; i < argc; i++){
         ret = processCNF(argv[i]);
         //tratamiento de errores
     }
-
+    
     //Los primeros programas los lee por parametro, el resto les llega por pipe
-    //char pathBuffer[PATH_MAX];
+    char pathBuffer[PATH_MAX];
 
-    // int len;
-    // while((len = read(0, pathBuffer, PATH_MAX)) != 0){
-    //     ret = processCNF(pathBuffer);
-    //     //tratamiento de errores del processCNF y del
-    // }
+    int len;
+    char done = 3;
+    do{
+        write(1, &done, 1);
+        len = read(0, pathBuffer, PATH_MAX);
+        ret = processCNF(pathBuffer);
 
-    return 0;
+        //tratamiento de errores del processCNF y del
+    } while (len > 0);
+        
+    exit(0);
 }
 
 int processCNF(const char *path){
@@ -52,9 +57,12 @@ int processCNF(const char *path){
         setvbuf(stdout, NULL, _IONBF, 0);
 
         int len = fread(minisatOutput, 1, OUTPUT_MAX, minisatStream);
-        //write(1, minisatOutput, len);
+        write(1, minisatOutput, len);
         puts(path);
         pclose(minisatStream);
+        //errores
+
+        while(getchar() != 03);
 
         return 0;
 }
