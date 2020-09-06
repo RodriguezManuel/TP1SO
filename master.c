@@ -37,7 +37,7 @@ int main(int argc, const char *argv[]){
     emptyBlocks = sem_open(EMPTY_SEM, O_CREAT, S_IRUSR | S_IWUSR, SHM_COUNT);
 
     write(1, shmName, strlen(shmName));
-    sleep(10);
+    sleep(SLEEPY_TIME);
     putchar('\n');
 
     if(strcmp(shmBase, CODE)){
