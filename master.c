@@ -6,10 +6,17 @@
 #include <sys/wait.h>
 #include <sys/select.h>
 #include <stdlib.h>
+#include <sys/mman.h>
+#include <sys/stat.h>        /* For mode constants */
+#include <fcntl.h>           /* For O_* constants */
+#include <semaphore.h>
+
+
 
 #define MAX_SLAVE 10
 #define FILECOUNT 5
 #define DONE_CHAR 3         //  Char que indica que está todo ok
+#define SHM_SIZE 4096
 
 int createSlaves(int pipesSM[][2], int pipesMS[][2], int *argsConsumed, int argc, const char *argv[]);
 
@@ -17,14 +24,64 @@ void defineSets(int activePipe[], fd_set *readSet, int pipesSM[][2], int slaveCo
 
 void runSelect(int pipesSM[][2], int pipesMS[][2], int slaveCount, int *argsConsumed, int argc, const char *argv[]);
 
+extern sem_t *sem_open(const char *__name, int __oflag, ...);
+
 int main(int argc, const char *argv[]){
-    puts(argv[1]);
 
     if(argc < 2){
         return -1; //ver si hay que refinar el tratamiento de errores aca
     }
-    //esperar a proceso vista y compartirle el buffer
+
+    const char *name = "/cnfResults";
+    int shm_fd;
+    char *shm_base;
+    char *ptr;
+
+    shm_fd = shm_open(name, O_CREAT | O_RDWR, 0666);
     
+    if(shm_fd == -1){
+        perror("Error en creacion de memoria compartida.");
+        exit(1);
+    }
+
+    ftruncate(shm_fd, SHM_SIZE);
+    shm_base = mmap(NULL, SHM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
+    if(shm_base == MAP_FAILED){
+        perror("Error en mapeo");
+        exit(1);
+    }
+
+    write(1, name, strlen(name));
+    //sleep    
+
+
+
+    sem_t *empty = sem_open("/empty", O_CREAT);
+    sem_t *full = sem_open("/full", O_CREAT);
+
+    if(!strcmp(shm_base, "MBEH"))
+        while(1);
+
+
+
+
+
+
+    if(munmap(shm_base, SHM_SIZE) == -1){
+        //FALTA UNLINK
+        perror("Error en unmap.");
+        exit(1);
+    }
+
+    if(close(shm_fd) == -1){
+        perror("Error en cierre de fd.");
+        exit(1);
+    }
+
+    sem_close(empty);
+    sem_close(full);
+    //esperar a proceso vista y compartirle el buffer
+    /*
     int argsConsumed = 1;           //Cantidad de argumentos leidos
     
     int pipesSM[MAX_SLAVE][2];                    //Pipes para entrada de datos desde los slaves al master
@@ -40,8 +97,9 @@ int main(int argc, const char *argv[]){
     for(int i = 0; i < slaveCount; i++){
         wait(NULL);
     }
-
+    */
     return 0;    
+
 }
 
 int createSlaves(int pipesSM[][2], int pipesMS[][2], int *argsConsumed, int argc, const char *argv[]){

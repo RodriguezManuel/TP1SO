@@ -1,8 +1,8 @@
 CC = gcc
 
-CFLAGS = -Wall -g -std=gnu99
+CFLAGS = -Wall -g -std=gnu99 -lrt -pthread
 
-all: slave master
+all: slave master vista
 
 slave: slave.c
 	$(CC) $(CFLAGS) slave.c -o slave
@@ -10,7 +10,10 @@ slave: slave.c
 master: master.c
 	$(CC) $(CFLAGS) master.c -o master
 
+vista: vista.c
+	$(CC) $(CFLAGS) vista.c -o vista
+
 clean:
-	rm -rf slave master
+	rm -rf slave master vista
 
 .PHONY:	all clean
