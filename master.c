@@ -4,7 +4,10 @@ int createSlaves(int pipesSM[][2], int pipesMS[][2], int *argsConsumed, int argc
 
 void defineSets(int activePipe[], fd_set *readSet, int pipesSM[][2], int slaveCount);
 
-void runSelect(int pipesSM[][2], int pipesMS[][2], int slaveCount, int *argsConsumed, int argc, const char *argv[]);
+void runSelect(int pipesSM[][2], int pipesMS[][2], int slaveCount, int *argsConsumed, int argc, const char *argv[], 
+                sem_t *emptyBlocks, sem_t *fullBlocks, char *currentShm);
+
+void writeShm(char **currentShm, char *shmBase, char *output, sem_t *emptyBlocks, sem_t *fullBlocks);
 
 int main(int argc, const char *argv[]){
 
@@ -15,8 +18,6 @@ int main(int argc, const char *argv[]){
     const char *shmName = "/cnfResults";
     int shmFD;
     char *shmBase;
-    char *ptr;
-    int shmFlag = 1;
     sem_t *emptyBlocks, *fullBlocks;
 
     shmFD = shm_open(shmName, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
@@ -53,17 +54,17 @@ int main(int argc, const char *argv[]){
         }
 
         shm_unlink(shmName);
-
+        
         sem_close(fullBlocks);
         sem_close(emptyBlocks);
 
         sem_unlink(FULL_SEM);
         sem_unlink(EMPTY_SEM);
 
-        shmFlag = 0;
+        shmBase = NULL;
     }
 
-    /*
+ 
     int argsConsumed = 1;           //Cantidad de argumentos leidos
     
     int pipesSM[MAX_SLAVE][2];                    //Pipes para entrada de datos desde los slaves al master
@@ -74,14 +75,13 @@ int main(int argc, const char *argv[]){
 
     setvbuf(stdout, NULL, _IONBF, 0);
 
-    runSelect(pipesSM, pipesMS, slaveCount, &argsConsumed, argc, argv);
+    runSelect(pipesSM, pipesMS, slaveCount, &argsConsumed, argc, argv, emptyBlocks, fullBlocks, shmBase);
 
     for(int i = 0; i < slaveCount; i++){
         wait(NULL);
     }
-    */
 
-    if(shmFlag){
+    if(shmBase != NULL){
         if(munmap(shmBase, SHM_SIZE) == -1){
             //FALTA UNLINK
             perror("Error en unmap.");
@@ -167,13 +167,15 @@ void defineSets(int activePipe[], fd_set *readSet, int pipesSM[][2], int slaveCo
     }
 }
 
-void runSelect(int pipesSM[][2], int pipesMS[][2], int slaveCount, int *argsConsumed, int argc, const char *argv[]){
+void runSelect(int pipesSM[][2], int pipesMS[][2], int slaveCount, int *argsConsumed, int argc, const char *argv[], 
+                sem_t *emptyBlocks, sem_t *fullBlocks, char *currentShm){
     int finishedSlaves = 0;
     fd_set readSet;
     char done = DONE_CHAR;
     char buffer[1000];
     int n, result, maxFD;
     int activePipe[MAX_SLAVE];
+    char *shmBase = currentShm;
 
     for (int i = 0; i < slaveCount; ++i){
         activePipe[i] = 1;
@@ -222,7 +224,10 @@ void runSelect(int pipesSM[][2], int pipesMS[][2], int slaveCount, int *argsCons
                                 }
                             }else{
                                 buffer[n] = 0;
-                                puts(buffer);
+                                if(currentShm != NULL){
+                                    writeShm(&currentShm, shmBase, buffer, emptyBlocks, fullBlocks);
+                                }
+                                //y escribirle al archivo
                                 fflush(stdout);
                                 buffer[0] = 0;
                                 write(pipesMS[i][1], &done, 1);
@@ -233,4 +238,16 @@ void runSelect(int pipesSM[][2], int pipesMS[][2], int slaveCount, int *argsCons
         }
 
     }
+}
+
+void writeShm(char **currentShm, char *shmBase, char *output, sem_t *emptyBlocks, sem_t *fullBlocks){
+    sem_wait(emptyBlocks);
+
+    if(*currentShm - shmBase == SHM_SIZE) //reseteo el buffer circular si llegue al final de este
+        *currentShm = shmBase;
+        //habra que revisar que pasa si llegas a este caso la primera vez que entras?
+
+    sprintf(*currentShm, "%s\n", output);
+
+    sem_post(fullBlocks);
 }

@@ -1,5 +1,7 @@
 #include "libinfo.h"
 
+void readShm(char **currentShm, char *shmBase, sem_t *emptyBlocks, sem_t *fullBlocks);
+
 int main(int argc, const char *argv[]){
     int shmFD = -1;
     char *shmBase;
@@ -36,6 +38,12 @@ int main(int argc, const char *argv[]){
 
     fullBlocks = sem_open(FULL_SEM, O_CREAT, S_IRUSR | S_IWUSR, 0);
     emptyBlocks = sem_open(EMPTY_SEM, O_CREAT, S_IRUSR | S_IWUSR, SHM_COUNT);
+    
+    char *currentShm = shmBase; 
+
+    while(1){
+        readShm(&currentShm, shmBase, emptyBlocks, fullBlocks);
+    }
 
     if(munmap(shmBase, SHM_SIZE) == -1){
         perror("Error en unmap.");
@@ -51,4 +59,18 @@ int main(int argc, const char *argv[]){
     sem_close(emptyBlocks);
 
     return 0;
+}
+
+void readShm(char **currentShm, char *shmBase, sem_t *emptyBlocks, sem_t *fullBlocks){
+    sem_wait(fullBlocks);
+
+    if(*currentShm - shmBase == SHM_SIZE) //reseteo el buffer circular si llegue al final de este
+        *currentShm = shmBase;
+         //habra que revisar que pasa si llegas a este caso la primera vez que entras?
+
+    printf("%s\n", *currentShm);
+
+  
+
+    sem_post(emptyBlocks);
 }
