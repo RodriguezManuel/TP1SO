@@ -1,12 +1,4 @@
-#include <unistd.h>
-#include <stdio.h>
-#include <linux/limits.h>
-#include <string.h>
-#include <stdlib.h>
-
-#define COMMAND_MAX PATH_MAX + 255
-#define OUTPUT_MAX 1024
-#define DONE_CHAR 3         //  Char que indica que está todo ok
+#include "libinfo.h"
 
 int processCNF(const char *path);
 

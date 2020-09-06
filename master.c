@@ -1,22 +1,4 @@
-#include <unistd.h>
-#include <stdio.h>
-#include <linux/limits.h>
-#include <string.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <sys/select.h>
-#include <stdlib.h>
-#include <sys/mman.h>
-#include <sys/stat.h>        /* For mode constants */
-#include <fcntl.h>           /* For O_* constants */
-#include <semaphore.h>
-
-
-
-#define MAX_SLAVE 10
-#define FILECOUNT 5
-#define DONE_CHAR 3         //  Char que indica que está todo ok
-#define SHM_SIZE 4096
+#include "libinfo.h"
 
 int createSlaves(int pipesSM[][2], int pipesMS[][2], int *argsConsumed, int argc, const char *argv[]);
 
@@ -24,63 +6,63 @@ void defineSets(int activePipe[], fd_set *readSet, int pipesSM[][2], int slaveCo
 
 void runSelect(int pipesSM[][2], int pipesMS[][2], int slaveCount, int *argsConsumed, int argc, const char *argv[]);
 
-extern sem_t *sem_open(const char *__name, int __oflag, ...);
-
 int main(int argc, const char *argv[]){
 
     if(argc < 2){
         return -1; //ver si hay que refinar el tratamiento de errores aca
     }
 
-    const char *name = "/cnfResults";
-    int shm_fd;
-    char *shm_base;
+    const char *shmName = "/cnfResults";
+    int shmFD;
+    char *shmBase;
     char *ptr;
+    int shmFlag = 1;
+    sem_t *emptyBlocks, *fullBlocks;
 
-    shm_fd = shm_open(name, O_CREAT | O_RDWR, 0666);
-    
-    if(shm_fd == -1){
+    shmFD = shm_open(shmName, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
+ 
+    if(shmFD == -1){
         perror("Error en creacion de memoria compartida.");
         exit(1);
     }
 
-    ftruncate(shm_fd, SHM_SIZE);
-    shm_base = mmap(NULL, SHM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
-    if(shm_base == MAP_FAILED){
+    ftruncate(shmFD, SHM_SIZE);
+    shmBase = mmap(NULL, SHM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, shmFD, 0);
+    if(shmBase == MAP_FAILED){
         perror("Error en mapeo");
         exit(1);
     }
 
-    write(1, name, strlen(name));
-    //sleep    
+    fullBlocks = sem_open(FULL_SEM, O_CREAT, S_IRUSR | S_IWUSR, 0);
+    emptyBlocks = sem_open(EMPTY_SEM, O_CREAT, S_IRUSR | S_IWUSR, SHM_COUNT);
 
+    write(1, shmName, strlen(shmName));
+    sleep(10);
+    putchar('\n');
 
+    if(strcmp(shmBase, CODE)){
+        //no existe vista
+        if(munmap(shmBase, SHM_SIZE) == -1){
+            perror("Error en unmap.");
+            exit(1);
+        }
 
-    sem_t *empty = sem_open("/empty", O_CREAT);
-    sem_t *full = sem_open("/full", O_CREAT);
+        if(close(shmFD) == -1){
+            perror("Error en cierre de fd.");
+            exit(1);
+        }
 
-    if(!strcmp(shm_base, "MBEH"))
-        while(1);
+        shm_unlink(shmName);
 
+        sem_close(fullBlocks);
+        sem_close(emptyBlocks);
 
+        sem_unlink(FULL_SEM);
+        sem_unlink(EMPTY_SEM);
 
-
-
-
-    if(munmap(shm_base, SHM_SIZE) == -1){
-        //FALTA UNLINK
-        perror("Error en unmap.");
-        exit(1);
+        shmFlag = 0;
     }
 
-    if(close(shm_fd) == -1){
-        perror("Error en cierre de fd.");
-        exit(1);
-    }
-
-    sem_close(empty);
-    sem_close(full);
-    //esperar a proceso vista y compartirle el buffer
     /*
     int argsConsumed = 1;           //Cantidad de argumentos leidos
     
@@ -98,6 +80,28 @@ int main(int argc, const char *argv[]){
         wait(NULL);
     }
     */
+
+    if(shmFlag){
+        if(munmap(shmBase, SHM_SIZE) == -1){
+            //FALTA UNLINK
+            perror("Error en unmap.");
+            exit(1);
+        }
+
+        if(close(shmFD) == -1){
+            perror("Error en cierre de fd.");
+            exit(1);
+        }
+
+        shm_unlink(shmName);
+
+        sem_close(fullBlocks);
+        sem_close(emptyBlocks);
+
+        sem_unlink(FULL_SEM);
+        sem_unlink(EMPTY_SEM);
+    }
+
     return 0;    
 
 }
@@ -178,7 +182,6 @@ void runSelect(int pipesSM[][2], int pipesMS[][2], int slaveCount, int *argsCons
             maxFD = pipesSM[slaveCount][0];
         else if (pipesSM[slaveCount][1] > maxFD)
             maxFD = pipesSM[slaveCount][1];
-
     }
 
     while(finishedSlaves != slaveCount){
