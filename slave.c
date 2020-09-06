@@ -6,6 +6,7 @@
 
 #define COMMAND_MAX PATH_MAX + 255
 #define OUTPUT_MAX 1024
+#define DONE_CHAR 3         //  Char que indica que está todo ok
 
 int processCNF(const char *path);
 
@@ -25,7 +26,7 @@ int main(int argc, const char* argv[]){
     char pathBuffer[PATH_MAX];
 
     int len;
-    char done = 3;
+    char done = DONE_CHAR;
     do{
         write(1, &done, 1);
         len = read(0, pathBuffer, PATH_MAX);
@@ -58,13 +59,13 @@ int processCNF(const char *path){
 
         int len = fread(minisatOutput, 1, OUTPUT_MAX, minisatStream);
         minisatOutput[len] = 0;
-        printf("%s%s\n", minisatOutput, path);
-        
+        printf("SlavePID = %d\n%s%s\n", getpid(), minisatOutput, path);
+
         pclose(minisatStream);
         //errores
 
         //Espero que master me diga que puedo seguir
-        while(getchar() != 03);
+        while(getchar() != DONE_CHAR);
 
         return 0;
 }

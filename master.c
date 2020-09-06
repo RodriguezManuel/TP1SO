@@ -9,8 +9,13 @@
 
 #define MAX_SLAVE 10
 #define FILECOUNT 5
+#define DONE_CHAR 3         //  Char que indica que está todo ok
+
+int createSlaves(int pipesSM[][2], int pipesMS[][2], int *argsConsumed, int argc, const char *argv[]);
 
 void defineSets(int activePipe[], fd_set *readSet, int pipesSM[][2], int slaveCount);
+
+void runSelect(int pipesSM[][2], int pipesMS[][2], int slaveCount, int *argsConsumed, int argc, const char *argv[]);
 
 int main(int argc, const char *argv[]){
     puts(argv[1]);
@@ -20,47 +25,51 @@ int main(int argc, const char *argv[]){
     }
     //esperar a proceso vista y compartirle el buffer
     
-    pid_t pidVec[MAX_SLAVE];        //Vectores de PIDs
     int argsConsumed = 1;           //Cantidad de argumentos leidos
-    int execRet;                    //?????
     
-    const char *pathVec[FILECOUNT+2];               //Argumentos para los slaves
     int pipesSM[MAX_SLAVE][2];                    //Pipes para entrada de datos desde los slaves al master
     int pipesMS[MAX_SLAVE][2];                   //Pipes para salida hacia los slaves
-    int pipeRet;
     int slaveCount;
-    int activePipe[MAX_SLAVE] = {0};
-    int maxFD = 0;
+
+    slaveCount = createSlaves(pipesSM, pipesMS, &argsConsumed, argc, argv);
+
+    setvbuf(stdout, NULL, _IONBF, 0);
+
+    runSelect(pipesSM, pipesMS, slaveCount, &argsConsumed, argc, argv);
+
+    for(int i = 0; i < slaveCount; i++){
+        wait(NULL);
+    }
+
+    return 0;    
+}
+
+int createSlaves(int pipesSM[][2], int pipesMS[][2], int *argsConsumed, int argc, const char *argv[]){
+    const char *pathVec[FILECOUNT+2];               //Argumentos para los slaves
+    int slaveCount, pipeRet;
+    pid_t slavePID;
+    int execRet;                    //?????
 
     pathVec[0] = "slave";
 
-    for(slaveCount = 0; slaveCount < MAX_SLAVE && argsConsumed < argc; slaveCount++){
+    for(slaveCount = 0; slaveCount < MAX_SLAVE && *argsConsumed < argc; slaveCount++){
         int j;
 
-        for(j = 1; j <= FILECOUNT && argsConsumed < argc; j++)
-            pathVec[j] = argv[argsConsumed++];
+        for(j = 1; j <= FILECOUNT && *argsConsumed < argc; j++)
+            pathVec[j] = argv[(*argsConsumed)++];
 
         pathVec[j] = NULL;
 
         pipeRet = pipe(pipesSM[slaveCount]);
         if(pipeRet == -1) {}          //tratamiento de errores
-        if (pipesSM[slaveCount][0] > maxFD && pipesSM[slaveCount][0] > pipesSM[slaveCount][1])
-            maxFD = pipesSM[slaveCount][0];
-        else if (pipesSM[slaveCount][1] > maxFD)
-            maxFD = pipesSM[slaveCount][1];
 
         pipeRet = pipe(pipesMS[slaveCount]);
         if(pipeRet == -1) {}          //tratamiento de errores
-        if (pipesMS[slaveCount][0] > maxFD && pipesMS[slaveCount][0] > pipesMS[slaveCount][1])
-            maxFD = pipesMS[slaveCount][0];
-        else if (pipesMS[slaveCount][1] > maxFD)
-            maxFD = pipesMS[slaveCount][1];
 
-        pidVec[slaveCount] = fork();
+        slavePID = fork();
 
         //tratamiento de errores fork
-        if(pidVec[slaveCount] == 0){
-
+        if(slavePID == 0){
             dup2(pipesSM[slaveCount][1], 1);
             
             dup2(pipesMS[slaveCount][0], 0);
@@ -75,25 +84,49 @@ int main(int argc, const char *argv[]){
 
             execRet = execv("slave", (char * const *) pathVec);
             //tratamiento de errores exec
+        } else if (slavePID == -1){
+            //tratamiento de errores
         }
 
         close(pipesSM[slaveCount][1]);
         close(pipesMS[slaveCount][0]);
-
-        activePipe[slaveCount] = 1;
     }
 
-    maxFD++;
+    return slaveCount;
+}
 
-    fd_set readSet;
+void defineSets(int activePipe[], fd_set *readSet, int pipesSM[][2], int slaveCount){
+    FD_ZERO(readSet);
+
+    for(int i = 0; i < slaveCount; i++){
+        if(activePipe[i] == 1){
+            FD_SET(pipesSM[i][0], readSet);
+        }
+    }
+}
+
+void runSelect(int pipesSM[][2], int pipesMS[][2], int slaveCount, int *argsConsumed, int argc, const char *argv[]){
     int finishedSlaves = 0;
+    fd_set readSet;
+    char done = DONE_CHAR;
+    char buffer[1000];
+    int n, result, maxFD;
+    int activePipe[MAX_SLAVE];
 
-    setvbuf(stdout, NULL, _IONBF, 0);
+    for (int i = 0; i < slaveCount; ++i){
+        activePipe[i] = 1;
+        //  Tengo que buscar el FD maximo para select()
+        if (pipesSM[slaveCount][0] > maxFD && pipesSM[slaveCount][0] > pipesSM[slaveCount][1])
+            maxFD = pipesSM[slaveCount][0];
+        else if (pipesSM[slaveCount][1] > maxFD)
+            maxFD = pipesSM[slaveCount][1];
+
+    }
 
     while(finishedSlaves != slaveCount){
         defineSets(activePipe, &readSet, pipesSM, slaveCount);
 
-        int result = select(maxFD, &readSet, NULL, NULL, NULL);
+        result = select(maxFD+1, &readSet, NULL, NULL, NULL);
         switch(result){
             case -1:
                     perror("MBEH");
@@ -102,11 +135,9 @@ int main(int argc, const char *argv[]){
                     break;
             default:
                 for(int i = 0; i < slaveCount; i++){
-                    // printf("%d",i);
                     if(FD_ISSET(pipesSM[i][0], &readSet)){
                         //Entonces tengo que leer del fd
-                        char bufre[1000];
-                        int n = read(pipesSM[i][0], bufre, 1000);
+                        n = read(pipesSM[i][0], buffer, 1000);
                         if(n == 0)
                         {
                             // tratamiento de errores
@@ -117,23 +148,22 @@ int main(int argc, const char *argv[]){
                             printf("MBEHHHHH");
                         }
                         else{
-                            if(bufre[0] == 3){
-                                if(argsConsumed == argc){
+                            if(buffer[0] == DONE_CHAR){
+                                if(*argsConsumed == argc){
                                     // no hay mas archivos para parsear, cierro el pipe (y se muere el slave)
                                     close(pipesSM[i][0]);
                                     close(pipesMS[i][1]);
                                     activePipe[i] = 0;
                                     finishedSlaves++;
                                 }else{
-                                    write(pipesMS[i][1], argv[argsConsumed], strlen(argv[argsConsumed])+1);
-                                    argsConsumed++;
+                                    write(pipesMS[i][1], argv[*argsConsumed], strlen(argv[*argsConsumed])+1);
+                                    (*argsConsumed)++;
                                 }
                             }else{
-                                bufre[n] = 0;
-                                puts(bufre);
+                                buffer[n] = 0;
+                                puts(buffer);
                                 fflush(stdout);
-                                bufre[0] = 0;
-                                char done = 03;
+                                buffer[0] = 0;
                                 write(pipesMS[i][1], &done, 1);
                             }
                        }
@@ -141,21 +171,5 @@ int main(int argc, const char *argv[]){
                 }
         }
 
-    }
-
-    for(int i = 0; i < slaveCount; i++){
-        wait(NULL);
-    }
-
-    return 0;    
-}
-
-void defineSets(int activePipe[], fd_set *readSet, int pipesSM[][2], int slaveCount){
-    FD_ZERO(readSet);
-
-    for(int i = 0; i < slaveCount; i++){
-        if(activePipe[i] == 1){
-            FD_SET(pipesSM[i][0], readSet);
-        }
     }
 }
