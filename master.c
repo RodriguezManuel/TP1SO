@@ -13,6 +13,8 @@
 void defineSets(int activePipe[], fd_set *readSet, int pipesSM[][2], int slaveCount);
 
 int main(int argc, const char *argv[]){
+    puts(argv[1]);
+
     if(argc < 2){
         return -1; //ver si hay que refinar el tratamiento de errores aca
     }
@@ -28,37 +30,36 @@ int main(int argc, const char *argv[]){
     int pipeRet;
     int slaveCount;
     int activePipe[MAX_SLAVE] = {0};
-   // int maxFD = 0;
+    int maxFD = 0;
 
     pathVec[0] = "slave";
-    pathVec[FILECOUNT+1] = NULL;
 
-    for(slaveCount = 0; slaveCount < MAX_SLAVE; slaveCount++){
-        for(int j = 1; j < FILECOUNT+1 && argsConsumed < argc; j++)
+    for(slaveCount = 0; slaveCount < MAX_SLAVE && argsConsumed < argc; slaveCount++){
+        int j;
+
+        for(j = 1; j <= FILECOUNT && argsConsumed < argc; j++)
             pathVec[j] = argv[argsConsumed++];
-        
-        if(argsConsumed == argc)
-            break;
+
+        pathVec[j] = NULL;
 
         pipeRet = pipe(pipesSM[slaveCount]);
         if(pipeRet == -1) {}          //tratamiento de errores
-/*        if (pipesSM[slaveCount][0] > maxFD && pipesSM[slaveCount][0] > pipesSM[slaveCount][1])
+        if (pipesSM[slaveCount][0] > maxFD && pipesSM[slaveCount][0] > pipesSM[slaveCount][1])
             maxFD = pipesSM[slaveCount][0];
         else if (pipesSM[slaveCount][1] > maxFD)
             maxFD = pipesSM[slaveCount][1];
-*/
+
         pipeRet = pipe(pipesMS[slaveCount]);
         if(pipeRet == -1) {}          //tratamiento de errores
- /*       if (pipesMS[slaveCount][0] > maxFD && pipesMS[slaveCount][0] > pipesMS[slaveCount][1])
+        if (pipesMS[slaveCount][0] > maxFD && pipesMS[slaveCount][0] > pipesMS[slaveCount][1])
             maxFD = pipesMS[slaveCount][0];
         else if (pipesMS[slaveCount][1] > maxFD)
             maxFD = pipesMS[slaveCount][1];
-*/
+
         pidVec[slaveCount] = fork();
 
         //tratamiento de errores fork
         if(pidVec[slaveCount] == 0){
-
 
             dup2(pipesSM[slaveCount][1], 1);
             
@@ -82,14 +83,17 @@ int main(int argc, const char *argv[]){
         activePipe[slaveCount] = 1;
     }
 
+    maxFD++;
+
     fd_set readSet;
     int finishedSlaves = 0;
 
     setvbuf(stdout, NULL, _IONBF, 0);
-    while(1){
+
+    while(finishedSlaves != slaveCount){
         defineSets(activePipe, &readSet, pipesSM, slaveCount);
 
-        int result = select(FD_SETSIZE, &readSet, NULL, NULL, NULL);
+        int result = select(maxFD, &readSet, NULL, NULL, NULL);
         switch(result){
             case -1:
                     perror("MBEH");
@@ -105,23 +109,23 @@ int main(int argc, const char *argv[]){
                         int n = read(pipesSM[i][0], bufre, 1000);
                         if(n == 0)
                         {
-                            // error, se murio el slave
-                            puts("F");
+                            // tratamiento de errores
                             close(pipesSM[i][0]);
                             activePipe[i] = 0;
                         }else if(n == -1){
-
+                            //  tratamiento de errores
+                            printf("MBEHHHHH");
                         }
                         else{
                             if(bufre[0] == 3){
                                 if(argsConsumed == argc){
-                                    // no hay mas archivos para parsear
+                                    // no hay mas archivos para parsear, cierro el pipe (y se muere el slave)
                                     close(pipesSM[i][0]);
                                     close(pipesMS[i][1]);
                                     activePipe[i] = 0;
                                     finishedSlaves++;
                                 }else{
-                                    write(pipesMS[i][1], argv[argsConsumed], strlen(argv[argsConsumed]));
+                                    write(pipesMS[i][1], argv[argsConsumed], strlen(argv[argsConsumed])+1);
                                     argsConsumed++;
                                 }
                             }else{
@@ -136,9 +140,6 @@ int main(int argc, const char *argv[]){
                     }
                 }
         }
-
-        if(finishedSlaves == slaveCount)
-            exit(1);
 
     }
 

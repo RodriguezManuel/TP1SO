@@ -57,11 +57,13 @@ int processCNF(const char *path){
         setvbuf(stdout, NULL, _IONBF, 0);
 
         int len = fread(minisatOutput, 1, OUTPUT_MAX, minisatStream);
-        write(1, minisatOutput, len);
-        puts(path);
+        minisatOutput[len] = 0;
+        printf("%s%s\n", minisatOutput, path);
+        
         pclose(minisatStream);
         //errores
 
+        //Espero que master me diga que puedo seguir
         while(getchar() != 03);
 
         return 0;
