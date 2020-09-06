@@ -1,51 +1,46 @@
 #include "libinfo.h"
 
-void readShm(char **currentShm, char *shmBase, sem_t *emptyBlocks, sem_t *fullBlocks);
+void readShm(char **currentShm, sem_t *availBlocks);
 
 int main(int argc, const char *argv[]){
-    int shmFD = -1;
+    int shmFD = -1, fileCount;
     char *shmBase;
 
-    char buffer[1024];
-    char const *shmName;
-    sem_t *emptyBlocks, *fullBlocks;
+    char shmName[1024];
+    sem_t *availBlocks;
 
     if(argc == 1){
-        read(0, buffer, 1024);
-        shmName = buffer;
-    }else if(argc == 2){
-        shmName = argv[1];
+        scanf("%s\n%d\n", shmName, &fileCount);
+    }else if(argc == 3){
+        strcpy(shmName, argv[1]);
+        fileCount = atoi(argv[2]);
     }else{
-        printf("CANTIDAD INCORRECTA DE PARAMETROS ?");
+        perror("CANTIDAD INCORRECTA DE PARAMETROS ?");
         exit(1);
     }
 
-    shmFD = shm_open(shmName, O_RDWR, S_IRUSR | S_IWUSR);            
+    shmFD = shm_open(shmName, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);            
 
     if(shmFD == -1){
         perror("Error en creacion de memoria compartida.");
         exit(1);
     }
 
-    shmBase = mmap(NULL, SHM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, shmFD, 0);
+    shmBase = mmap(NULL, fileCount*BLOCK_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, shmFD, 0);
     if(shmBase == MAP_FAILED){
         perror("Error en mapeo");
         exit(1);
     }
 
-    sprintf(shmBase, "%s", CODE);
-    printf("%s\n", shmBase);
-
-    fullBlocks = sem_open(FULL_SEM, O_CREAT, S_IRUSR | S_IWUSR, 0);
-    emptyBlocks = sem_open(EMPTY_SEM, O_CREAT, S_IRUSR | S_IWUSR, SHM_COUNT);
+    availBlocks = sem_open(AVAIL_SEM, O_CREAT, S_IRUSR | S_IWUSR, 0);
     
     char *currentShm = shmBase; 
 
-    while(1){
-        readShm(&currentShm, shmBase, emptyBlocks, fullBlocks);
+    for(int i = 0; i < fileCount; i++){
+        readShm(&currentShm, availBlocks);
     }
-
-    if(munmap(shmBase, SHM_SIZE) == -1){
+  
+    if(munmap(shmBase, fileCount*BLOCK_SIZE) == -1){
         perror("Error en unmap.");
         exit(1);
     }
@@ -55,22 +50,15 @@ int main(int argc, const char *argv[]){
         exit(1);
     }
 
-    sem_close(fullBlocks);
-    sem_close(emptyBlocks);
+    sem_close(availBlocks);
 
     return 0;
 }
 
-void readShm(char **currentShm, char *shmBase, sem_t *emptyBlocks, sem_t *fullBlocks){
-    sem_wait(fullBlocks);
-
-    if(*currentShm - shmBase == SHM_SIZE) //reseteo el buffer circular si llegue al final de este
-        *currentShm = shmBase;
-         //habra que revisar que pasa si llegas a este caso la primera vez que entras?
-
+void readShm(char **currentShm, sem_t *availBlocks){
+    sem_wait(availBlocks);
+    
     printf("%s\n", *currentShm);
-
-  
-
-    sem_post(emptyBlocks);
+    fflush(stdout);
+    *currentShm += BLOCK_SIZE; 
 }

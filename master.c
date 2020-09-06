@@ -5,9 +5,9 @@ int createSlaves(int pipesSM[][2], int pipesMS[][2], int *argsConsumed, int argc
 void defineSets(int activePipe[], fd_set *readSet, int pipesSM[][2], int slaveCount);
 
 void runSelect(int pipesSM[][2], int pipesMS[][2], int slaveCount, int *argsConsumed, int argc, const char *argv[], 
-                sem_t *emptyBlocks, sem_t *fullBlocks, char *currentShm);
+                sem_t *availBlocks, char *currentShm);
 
-void writeShm(char **currentShm, char *shmBase, char *output, sem_t *emptyBlocks, sem_t *fullBlocks);
+void writeShm(char **currentShm, char *shmBase, char *output, sem_t *availBlocks, int fileCount);
 
 int main(int argc, const char *argv[]){
 
@@ -16,9 +16,9 @@ int main(int argc, const char *argv[]){
     }
 
     const char *shmName = "/cnfResults";
-    int shmFD;
+    int shmFD, ftruncRet;
     char *shmBase;
-    sem_t *emptyBlocks, *fullBlocks;
+    sem_t *availBlocks;
 
     shmFD = shm_open(shmName, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
  
@@ -27,43 +27,22 @@ int main(int argc, const char *argv[]){
         exit(1);
     }
 
-    ftruncate(shmFD, SHM_SIZE);
-    shmBase = mmap(NULL, SHM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, shmFD, 0);
+    ftruncRet = ftruncate(shmFD, (argc-1)*BLOCK_SIZE);
+    if(ftruncRet == -1){
+        perror("Error en asignacion de memoria compartida");
+        exit(1);
+    }
+
+    shmBase = mmap(NULL, (argc-1)*BLOCK_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, shmFD, 0);
     if(shmBase == MAP_FAILED){
         perror("Error en mapeo");
         exit(1);
     }
 
-    fullBlocks = sem_open(FULL_SEM, O_CREAT, S_IRUSR | S_IWUSR, 0);
-    emptyBlocks = sem_open(EMPTY_SEM, O_CREAT, S_IRUSR | S_IWUSR, SHM_COUNT);
+    availBlocks = sem_open(AVAIL_SEM, O_CREAT, S_IRUSR | S_IWUSR, 0);
 
-    write(1, shmName, strlen(shmName));
+    printf("%s\n%d\n", shmName, argc-1);
     sleep(SLEEPY_TIME);
-    putchar('\n');
-
-    if(strcmp(shmBase, CODE)){
-        //no existe vista
-        if(munmap(shmBase, SHM_SIZE) == -1){
-            perror("Error en unmap.");
-            exit(1);
-        }
-
-        if(close(shmFD) == -1){
-            perror("Error en cierre de fd.");
-            exit(1);
-        }
-
-        shm_unlink(shmName);
-        
-        sem_close(fullBlocks);
-        sem_close(emptyBlocks);
-
-        sem_unlink(FULL_SEM);
-        sem_unlink(EMPTY_SEM);
-
-        shmBase = NULL;
-    }
-
  
     int argsConsumed = 1;           //Cantidad de argumentos leidos
     
@@ -73,16 +52,14 @@ int main(int argc, const char *argv[]){
 
     slaveCount = createSlaves(pipesSM, pipesMS, &argsConsumed, argc, argv);
 
-    setvbuf(stdout, NULL, _IONBF, 0);
-
-    runSelect(pipesSM, pipesMS, slaveCount, &argsConsumed, argc, argv, emptyBlocks, fullBlocks, shmBase);
+    runSelect(pipesSM, pipesMS, slaveCount, &argsConsumed, argc, argv, availBlocks, shmBase);
 
     for(int i = 0; i < slaveCount; i++){
         wait(NULL);
     }
 
     if(shmBase != NULL){
-        if(munmap(shmBase, SHM_SIZE) == -1){
+        if(munmap(shmBase, (argc-1)*BLOCK_SIZE) == -1){
             //FALTA UNLINK
             perror("Error en unmap.");
             exit(1);
@@ -95,11 +72,9 @@ int main(int argc, const char *argv[]){
 
         shm_unlink(shmName);
 
-        sem_close(fullBlocks);
-        sem_close(emptyBlocks);
+        sem_close(availBlocks);
 
-        sem_unlink(FULL_SEM);
-        sem_unlink(EMPTY_SEM);
+        sem_unlink(AVAIL_SEM);
     }
 
     return 0;    
@@ -168,7 +143,7 @@ void defineSets(int activePipe[], fd_set *readSet, int pipesSM[][2], int slaveCo
 }
 
 void runSelect(int pipesSM[][2], int pipesMS[][2], int slaveCount, int *argsConsumed, int argc, const char *argv[], 
-                sem_t *emptyBlocks, sem_t *fullBlocks, char *currentShm){
+                sem_t *availBlocks, char *currentShm){
     int finishedSlaves = 0;
     fd_set readSet;
     char done = DONE_CHAR;
@@ -192,7 +167,7 @@ void runSelect(int pipesSM[][2], int pipesMS[][2], int slaveCount, int *argsCons
         result = select(maxFD+1, &readSet, NULL, NULL, NULL);
         switch(result){
             case -1:
-                    perror("MBEH");
+                    perror("Error en Select");
                     exit(1); 
             case 0: //you shouldnt be here; 
                     break;
@@ -224,9 +199,7 @@ void runSelect(int pipesSM[][2], int pipesMS[][2], int slaveCount, int *argsCons
                                 }
                             }else{
                                 buffer[n] = 0;
-                                if(currentShm != NULL){
-                                    writeShm(&currentShm, shmBase, buffer, emptyBlocks, fullBlocks);
-                                }
+                                writeShm(&currentShm, shmBase, buffer, availBlocks, argc-1);
                                 //y escribirle al archivo
                                 fflush(stdout);
                                 buffer[0] = 0;
@@ -240,14 +213,18 @@ void runSelect(int pipesSM[][2], int pipesMS[][2], int slaveCount, int *argsCons
     }
 }
 
-void writeShm(char **currentShm, char *shmBase, char *output, sem_t *emptyBlocks, sem_t *fullBlocks){
-    sem_wait(emptyBlocks);
-
-    if(*currentShm - shmBase == SHM_SIZE) //reseteo el buffer circular si llegue al final de este
-        *currentShm = shmBase;
-        //habra que revisar que pasa si llegas a este caso la primera vez que entras?
-
+void writeShm(char **currentShm, char *shmBase, char *output, sem_t *availBlocks, int fileCount){
+    if(*currentShm - shmBase == (fileCount)*BLOCK_SIZE){
+        exit(1);//tratamiento de errores (te quedaste sin memoria)
+    }
+        
+    
     sprintf(*currentShm, "%s\n", output);
+    fflush(stdout);
+    //printf( "%s\n", *currentShm);
 
-    sem_post(fullBlocks);
+    *currentShm += BLOCK_SIZE; 
+    sem_post(availBlocks);
+
+    
 }

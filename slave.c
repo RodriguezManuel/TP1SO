@@ -51,7 +51,7 @@ int processCNF(const char *path){
 
         int len = fread(minisatOutput, 1, OUTPUT_MAX, minisatStream);
         minisatOutput[len] = 0;
-        printf("SlavePID = %d\n%s%s\n", getpid(), minisatOutput, path);
+        printf("SlavePID = %d\n%s%s", getpid(), minisatOutput, path);
 
         pclose(minisatStream);
         //errores

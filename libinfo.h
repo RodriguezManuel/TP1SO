@@ -15,7 +15,7 @@
 #include <fcntl.h>           /* For O_* constants */
 #include <semaphore.h>
 
-#define SLEEPY_TIME 10
+#define SLEEPY_TIME 2
 
 //	Info para la creacion de esclavos
 #define MAX_SLAVE 10
@@ -26,13 +26,8 @@
 #define OUTPUT_MAX 1024				// Tamaño de la info que devuelve minisat
 
 //	Info para buffer de memoria compartida
-#define SHM_COUNT 50
-#define BLOCK_SIZE 2000
-#define SHM_SIZE SHM_COUNT*BLOCK_SIZE
-#define CODE "MBEH"
+#define BLOCK_SIZE 1500
 
-//	Nombres de los semaforos
-#define FULL_SEM "/fullBlocks"		//Sem que cuenta bloques displonibles para lectura
-#define EMPTY_SEM "/emptyBlocks"	//Sem que cuenta bloques displonibles para escritura
+#define AVAIL_SEM "/availBlocks"		//Semaforo que cuenta bloques disponibles para lectura
 
 #endif
