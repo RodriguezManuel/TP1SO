@@ -20,7 +20,7 @@ int main(int argc, const char *argv[]){
     char *shmBase;
     sem_t *availBlocks;
 
-    FILE* resultFile = fopen("resultFile","w");
+    FILE* resultFile = fopen("resultFile.txt","w");
     if(resultFile == NULL){
         perror("Error en apertura de archivo");
         exit(1);
@@ -209,7 +209,7 @@ void runSelect(int pipesSM[][2], int pipesMS[][2], int slaveCount, int *argsCons
                             }else{
                                 buffer[n] = 0;
                                 writeShm(&currentShm, shmBase, buffer, availBlocks, argc-1);
-                                fprintf(resultFile,"%s\n", buffer);
+                                fprintf(resultFile,"%s\n\n", buffer);
                                 //y escribirle al archivo
                                 buffer[0] = 0;
                                 write(pipesMS[i][1], &done, 1);
