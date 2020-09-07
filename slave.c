@@ -30,11 +30,13 @@ int main(int argc, const char* argv[]){
 }
 
 int processCNF(const char *path){
-        if(access(path, R_OK) == -1){
-            perror("Error al querer acceder archivo CNF, quizas no existe o no tiene permisos de lectura (processCNF)");
-            return 1; //si no existe o no tiene permisos, lo ignoro; no valdria la pena abortar
-        }
-        
+    int length, ret = 0;
+    char result[4096];
+    if(access(path, R_OK) == -1){
+        ret = 1;
+        length = sprintf(result, "Error al querer acceder archivo CNF: %s\n, quizas no existe o no tiene permisos de lectura (processCNF)", path);
+        //si no existe o no tiene permisos, lo ignoro; no valdria la pena abortar
+    }else{
         FILE *minisatStream;
         char cmdBuffer[COMMAND_MAX]; //cota superior para tamaño del string del comando
         char minisatOutput[OUTPUT_MAX+1];
@@ -51,17 +53,17 @@ int processCNF(const char *path){
             exit(1);
         }
 
-        int len = fread(minisatOutput, 1, OUTPUT_MAX, minisatStream);
+        length = fread(minisatOutput, 1, OUTPUT_MAX, minisatStream);
         pclose(minisatStream);
-        minisatOutput[len] = 0;
+        minisatOutput[length] = 0;
 
-        char result[4096];
-        
-        len = sprintf(result, "SlavePID = %d\n%s%s", getpid(), minisatOutput, path);
-        write(1, result, len);
+        length = sprintf(result, "SlavePID = %d\n%s%s", getpid(), minisatOutput, path);
+    }
+    
+    write(1, result, length);
 
-        //Espero que master me diga que puedo seguir
-        while(getchar() != DONE_CHAR);
+    //Espero que master me diga que puedo seguir
+    while(getchar() != DONE_CHAR);
 
-        return 0;
+    return ret;
 }
