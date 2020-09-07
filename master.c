@@ -5,7 +5,7 @@ int createSlaves(int pipesSM[][2], int pipesMS[][2], int *argsConsumed, int argc
 void defineSets(int activePipe[], fd_set *readSet, int pipesSM[][2], int slaveCount);
 
 void runSelect(int pipesSM[][2], int pipesMS[][2], int slaveCount, int *argsConsumed, int argc, const char *argv[], 
-                sem_t *availBlocks, char *currentShm);
+                sem_t *availBlocks, char *currentShm, FILE* resultFile);
 
 void writeShm(char **currentShm, char *shmBase, char *output, sem_t *availBlocks, int fileCount);
 
@@ -19,6 +19,13 @@ int main(int argc, const char *argv[]){
     int shmFD, ftruncRet;
     char *shmBase;
     sem_t *availBlocks;
+
+    FILE* resultFile = fopen("resultFile","w");
+    if(resultFile == NULL){
+        perror("Error en apertura de archivo");
+        exit(1);
+    }
+
 
     shmFD = shm_open(shmName, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
  
@@ -39,6 +46,8 @@ int main(int argc, const char *argv[]){
         exit(1);
     }
 
+    setvbuf(stdout, NULL, _IONBF, 0);
+
     availBlocks = sem_open(AVAIL_SEM, O_CREAT, S_IRUSR | S_IWUSR, 0);
 
     printf("%s\n%d\n", shmName, argc-1);
@@ -52,7 +61,7 @@ int main(int argc, const char *argv[]){
 
     slaveCount = createSlaves(pipesSM, pipesMS, &argsConsumed, argc, argv);
 
-    runSelect(pipesSM, pipesMS, slaveCount, &argsConsumed, argc, argv, availBlocks, shmBase);
+    runSelect(pipesSM, pipesMS, slaveCount, &argsConsumed, argc, argv, availBlocks, shmBase, resultFile);
 
     for(int i = 0; i < slaveCount; i++){
         wait(NULL);
@@ -76,6 +85,8 @@ int main(int argc, const char *argv[]){
 
         sem_unlink(AVAIL_SEM);
     }
+
+    fclose(resultFile);
 
     return 0;    
 
@@ -143,7 +154,7 @@ void defineSets(int activePipe[], fd_set *readSet, int pipesSM[][2], int slaveCo
 }
 
 void runSelect(int pipesSM[][2], int pipesMS[][2], int slaveCount, int *argsConsumed, int argc, const char *argv[], 
-                sem_t *availBlocks, char *currentShm){
+                sem_t *availBlocks, char *currentShm, FILE* resultFile){
     int finishedSlaves = 0;
     fd_set readSet;
     char done = DONE_CHAR;
@@ -200,8 +211,8 @@ void runSelect(int pipesSM[][2], int pipesMS[][2], int slaveCount, int *argsCons
                             }else{
                                 buffer[n] = 0;
                                 writeShm(&currentShm, shmBase, buffer, availBlocks, argc-1);
+                                fprintf(resultFile,"%s\n", buffer);
                                 //y escribirle al archivo
-                                fflush(stdout);
                                 buffer[0] = 0;
                                 write(pipesMS[i][1], &done, 1);
                             }
@@ -217,11 +228,8 @@ void writeShm(char **currentShm, char *shmBase, char *output, sem_t *availBlocks
     if(*currentShm - shmBase == (fileCount)*BLOCK_SIZE){
         exit(1);//tratamiento de errores (te quedaste sin memoria)
     }
-        
     
     sprintf(*currentShm, "%s\n", output);
-    //fflush(stdout);
-    //printf( "%s\n", *currentShm);
 
     *currentShm += BLOCK_SIZE; 
     sem_post(availBlocks);

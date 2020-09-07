@@ -8,6 +8,9 @@ int main(int argc, const char* argv[]){
         return -1; //ver si hay que refinar el tratamiento de errores aca
     }
     
+    setvbuf(stdout, NULL, _IONBF, 0);
+
+
     int ret;
     for(int i = 1; i < argc; i++){
         ret = processCNF(argv[i]);
@@ -22,11 +25,12 @@ int main(int argc, const char* argv[]){
     do{
         write(1, &done, 1);
         len = read(0, pathBuffer, PATH_MAX);
-        ret = processCNF(pathBuffer);
+        if(len > 0)
+            ret = processCNF(pathBuffer);
 
         //tratamiento de errores del processCNF y del
     } while (len > 0);
-        
+    
     exit(0);
 }
 

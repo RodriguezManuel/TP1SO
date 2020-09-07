@@ -9,6 +9,8 @@ int main(int argc, const char *argv[]){
     char shmName[1024], buffer[1024];
     sem_t *availBlocks;
 
+    setvbuf(stdout, NULL, _IONBF, 0);
+
     if(argc == 1){
         read(0, buffer, 1024);
         sscanf(buffer, "%s\n%d\n", shmName, &fileCount);
@@ -60,6 +62,6 @@ void readShm(char **currentShm, sem_t *availBlocks){
     sem_wait(availBlocks);
     
     printf("%s\n", *currentShm);
-    fflush(stdout);
+    
     *currentShm += BLOCK_SIZE; 
 }

@@ -1,5 +1,4 @@
 CC = gcc
-
 CFLAGS = -Wall -g -std=gnu99 -lrt -pthread
 
 all: slave master vista
@@ -14,6 +13,6 @@ vista: vista.c
 	$(CC) $(CFLAGS) vista.c -o vista
 
 clean:
-	rm -rf slave master vista
+	rm -rf slave master vista resultFile
 
 .PHONY:	all clean
