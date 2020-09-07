@@ -14,8 +14,13 @@ int main(int argc, const char *argv[]){
     if(argc == 1){
         char buffer[32];
         int n = read(0, buffer, 31);
-        buffer[n] = 0;
-        fileCount = atoi(buffer);
+        if (n > 0){
+            buffer[n] = 0;
+            fileCount = atoi(buffer);
+        } else {
+            perror("Cantidad incorrecta de argumentos en Vista (main)");
+            exit(1);
+        }
     } else if(argc == 2){
         fileCount = atoi(argv[1]);
     } else{

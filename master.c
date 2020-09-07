@@ -183,7 +183,7 @@ void runSelect(int pipesSM[][2], int pipesMS[][2], int slaveCount, int *argsCons
                     if(n == 0){ //eof
                         close(pipesSM[i][0]);
                         activePipe[i] = 0;
-                    } else{
+                    } else if (n != -1){
                         if(buffer[0] == DONE_CHAR){
                             if(*argsConsumed == argc){
                                 // no hay mas archivos para parsear, cierro el pipe (y se muere el slave)
