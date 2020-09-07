@@ -220,11 +220,9 @@ void writeShm(char **currentShm, char *shmBase, char *output, sem_t *availBlocks
         
     
     sprintf(*currentShm, "%s\n", output);
-    fflush(stdout);
+    //fflush(stdout);
     //printf( "%s\n", *currentShm);
 
     *currentShm += BLOCK_SIZE; 
     sem_post(availBlocks);
-
-    
 }

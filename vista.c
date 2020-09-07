@@ -6,11 +6,12 @@ int main(int argc, const char *argv[]){
     int shmFD = -1, fileCount;
     char *shmBase;
 
-    char shmName[1024];
+    char shmName[1024], buffer[1024];
     sem_t *availBlocks;
 
     if(argc == 1){
-        scanf("%s\n%d\n", shmName, &fileCount);
+        read(0, buffer, 1024);
+        sscanf(buffer, "%s\n%d\n", shmName, &fileCount);
     }else if(argc == 3){
         strcpy(shmName, argv[1]);
         fileCount = atoi(argv[2]);
