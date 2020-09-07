@@ -54,11 +54,15 @@ int processCNF(const char *path){
         setvbuf(stdout, NULL, _IONBF, 0);
 
         int len = fread(minisatOutput, 1, OUTPUT_MAX, minisatStream);
-        minisatOutput[len] = 0;
-        printf("SlavePID = %d\n%s%s", getpid(), minisatOutput, path);
-
         pclose(minisatStream);
         //errores
+        minisatOutput[len] = 0;
+
+        char result[4096];
+        
+        len = sprintf(result, "SlavePID = %d\n%s%s", getpid(), minisatOutput, path);
+        write(1, result, len);
+        
 
         //Espero que master me diga que puedo seguir
         while(getchar() != DONE_CHAR);
