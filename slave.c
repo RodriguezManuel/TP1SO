@@ -36,7 +36,7 @@ int main(int argc, const char* argv[]){
 int processCNF(const char *path){
         FILE *minisatStream;
         char cmdBuffer[COMMAND_MAX]; //cota superior para tamaño del string del comando
-        char minisatOutput[OUTPUT_MAX];
+        char minisatOutput[OUTPUT_MAX+1];
 
         strcpy(cmdBuffer, "minisat ");
         strcat(cmdBuffer, path);

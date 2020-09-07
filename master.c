@@ -183,7 +183,7 @@ void runSelect(int pipesSM[][2], int pipesMS[][2], int slaveCount, int *argsCons
                 for(int i = 0; i < slaveCount; i++){
                     if(FD_ISSET(pipesSM[i][0], &readSet)){
                         //Entonces tengo que leer del fd
-                        n = read(pipesSM[i][0], buffer, 1000);
+                        n = read(pipesSM[i][0], buffer, 999);
                         if(n == 0)
                         {
                             // tratamiento de errores

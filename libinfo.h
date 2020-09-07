@@ -22,8 +22,8 @@
 #define FILECOUNT 5
 #define DONE_CHAR 3         //  Char de comunicacion para pipes
 
-#define COMMAND_MAX PATH_MAX + 255	// Tamaño max para popen
-#define OUTPUT_MAX 1024				// Tamaño de la info que devuelve minisat
+#define COMMAND_MAX (PATH_MAX + 255)	// Tamaño max para popen
+#define OUTPUT_MAX 1024					// Tamaño de la info que devuelve minisat
 
 //	Info para buffer de memoria compartida
 #define SHM_NAME "/cnfResults"
