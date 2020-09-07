@@ -87,14 +87,14 @@ int main(int argc, const char *argv[]){
 
 int createSlaves(int pipesSM[][2], int pipesMS[][2], int *argsConsumed, int argc, const char *argv[]){
     const char *pathVec[FILECOUNT+2];               //Argumentos para los slaves
-    int slaveCount, pipeRet;
+    int slaveCount;
     pid_t slavePID;
     int execRet = 0;
 
     pathVec[0] = "slave";
 
     for(slaveCount = 0; slaveCount < MAX_SLAVE && *argsConsumed < argc; slaveCount++){
-        int j;
+        int j, pipeRet;
 
         for(j = 1; j <= FILECOUNT && *argsConsumed < argc; j++)
             pathVec[j] = argv[(*argsConsumed)++];
@@ -158,7 +158,7 @@ void runSelect(int pipesSM[][2], int pipesMS[][2], int slaveCount, int *argsCons
                 sem_t *availBlocks, char *currentShm, FILE* resultFile){
     fd_set readSet;
     char done = DONE_CHAR, buffer[1000], *shmBase = currentShm;
-    int n, result, maxFD = 0, ioRet = 0, activePipe[MAX_SLAVE], finishedSlaves = 0;
+    int n, maxFD = 0, ioRet = 0, activePipe[MAX_SLAVE], finishedSlaves = 0;
 
     for (int i = 0; i < slaveCount; ++i){
         activePipe[i] = 1;
@@ -170,7 +170,7 @@ void runSelect(int pipesSM[][2], int pipesMS[][2], int slaveCount, int *argsCons
     while(finishedSlaves != slaveCount){
         defineSets(activePipe, &readSet, pipesSM, slaveCount);
 
-        result = select(maxFD+1, &readSet, NULL, NULL, NULL);
+        int result = select(maxFD+1, &readSet, NULL, NULL, NULL);
         
         if(result == -1){
             perror("Error en Select (runSelect)");
