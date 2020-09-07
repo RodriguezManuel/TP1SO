@@ -15,7 +15,6 @@ int main(int argc, const char *argv[]){
         return -1; //ver si hay que refinar el tratamiento de errores aca
     }
 
-    const char *shmName = "/cnfResults";
     int shmFD, ftruncRet;
     char *shmBase;
     sem_t *availBlocks;
@@ -27,7 +26,7 @@ int main(int argc, const char *argv[]){
     }
 
 
-    shmFD = shm_open(shmName, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
+    shmFD = shm_open(SHM_NAME, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
  
     if(shmFD == -1){
         perror("Error en creacion de memoria compartida.");
@@ -50,7 +49,7 @@ int main(int argc, const char *argv[]){
 
     availBlocks = sem_open(AVAIL_SEM, O_CREAT, S_IRUSR | S_IWUSR, 0);
 
-    printf("%s\n%d\n", shmName, argc-1);
+    printf("%d\n", argc-1);
     sleep(SLEEPY_TIME);
  
     int argsConsumed = 1;           //Cantidad de argumentos leidos
@@ -79,7 +78,7 @@ int main(int argc, const char *argv[]){
             exit(1);
         }
 
-        shm_unlink(shmName);
+        shm_unlink(SHM_NAME);
 
         sem_close(availBlocks);
 

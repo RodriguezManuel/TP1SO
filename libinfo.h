@@ -26,6 +26,7 @@
 #define OUTPUT_MAX 1024				// Tamaño de la info que devuelve minisat
 
 //	Info para buffer de memoria compartida
+#define SHM_NAME "/cnfResults"
 #define BLOCK_SIZE 1500
 
 #define AVAIL_SEM "/availBlocks"		//Semaforo que cuenta bloques disponibles para lectura

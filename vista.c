@@ -6,23 +6,22 @@ int main(int argc, const char *argv[]){
     int shmFD = -1, fileCount;
     char *shmBase;
 
-    char shmName[1024], buffer[1024];
+    char buffer[20];
     sem_t *availBlocks;
 
     setvbuf(stdout, NULL, _IONBF, 0);
 
     if(argc == 1){
-        read(0, buffer, 1024);
-        sscanf(buffer, "%s\n%d\n", shmName, &fileCount);
-    }else if(argc == 3){
-        strcpy(shmName, argv[1]);
-        fileCount = atoi(argv[2]);
+        read(0, buffer, 20);
+        sscanf(buffer, "%d\n", &fileCount);
+    }else if(argc == 2){
+        fileCount = atoi(argv[1]);
     }else{
         perror("CANTIDAD INCORRECTA DE PARAMETROS ?");
         exit(1);
     }
 
-    shmFD = shm_open(shmName, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);            
+    shmFD = shm_open(SHM_NAME, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);            
 
     if(shmFD == -1){
         perror("Error en creacion de memoria compartida.");

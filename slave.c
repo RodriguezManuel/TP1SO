@@ -10,7 +10,6 @@ int main(int argc, const char* argv[]){
     
     setvbuf(stdout, NULL, _IONBF, 0);
 
-
     int ret;
     for(int i = 1; i < argc; i++){
         ret = processCNF(argv[i]);
