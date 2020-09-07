@@ -34,7 +34,7 @@ int processCNF(const char *path){
     char result[4096];
     if(access(path, R_OK) == -1){
         ret = 1;
-        length = sprintf(result, "Error al querer acceder archivo CNF: %s\n, quizas no existe o no tiene permisos de lectura (processCNF)", path);
+        length = sprintf(result, "Error al querer acceder archivo CNF: %s\nQuizas no existe o no tiene permisos de lectura (processCNF)", path);
         //si no existe o no tiene permisos, lo ignoro; no valdria la pena abortar
     }else{
         FILE *minisatStream;
