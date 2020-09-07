@@ -166,10 +166,8 @@ void runSelect(int pipesSM[][2], int pipesMS[][2], int slaveCount, int *argsCons
     for (int i = 0; i < slaveCount; ++i){
         activePipe[i] = 1;
         //  Tengo que buscar el FD maximo para select()
-        if (pipesSM[slaveCount][0] > maxFD && pipesSM[slaveCount][0] > pipesSM[slaveCount][1])
-            maxFD = pipesSM[slaveCount][0];
-        else if (pipesSM[slaveCount][1] > maxFD)
-            maxFD = pipesSM[slaveCount][1];
+        if (pipesSM[i][0] > maxFD )
+            maxFD = pipesSM[i][0];
     }
 
     while(finishedSlaves != slaveCount){
