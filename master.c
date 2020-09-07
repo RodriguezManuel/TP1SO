@@ -158,7 +158,7 @@ void runSelect(int pipesSM[][2], int pipesMS[][2], int slaveCount, int *argsCons
     fd_set readSet;
     char done = DONE_CHAR;
     char buffer[1000];
-    int n, result, maxFD;
+    int n, result, maxFD = 0;
     int activePipe[MAX_SLAVE];
     char *shmBase = currentShm;
 
