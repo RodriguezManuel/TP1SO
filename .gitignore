@@ -3,6 +3,7 @@
 *.sys
 master
 slave
+vista
 
 #Object files
 *.o
@@ -11,3 +12,7 @@ slave
 
 #CNF Folder
 cnf/
+
+#Result File
+resultFile
+resultFile.txt

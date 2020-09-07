@@ -1,16 +1,20 @@
 CC = gcc
+CFLAGS = -Wall -g -std=gnu99 -lrt -pthread
+LIBRARY = libinfo.h
 
-CFLAGS = -Wall -g -std=gnu99
+all: slave master vista
 
-all: slave master
-
-slave: slave.c
+slave: slave.c $(LIBRARY)
 	$(CC) $(CFLAGS) slave.c -o slave
 
-master: master.c
+master: master.c $(LIBRARY)
 	$(CC) $(CFLAGS) master.c -o master
 
+vista: vista.c $(LIBRARY)
+	$(CC) $(CFLAGS) vista.c -o vista
+
 clean:
-	rm -rf slave master
+	rm -rf slave master vista resultFile
 
 .PHONY:	all clean
+	

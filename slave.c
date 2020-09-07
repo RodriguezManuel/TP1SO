@@ -1,12 +1,4 @@
-#include <unistd.h>
-#include <stdio.h>
-#include <linux/limits.h>
-#include <string.h>
-#include <stdlib.h>
-
-#define COMMAND_MAX PATH_MAX + 255
-#define OUTPUT_MAX 1024
-#define DONE_CHAR 3         //  Char que indica que está todo ok
+#include "libinfo.h"
 
 int processCNF(const char *path);
 
@@ -16,6 +8,9 @@ int main(int argc, const char* argv[]){
         return -1; //ver si hay que refinar el tratamiento de errores aca
     }
     
+    setvbuf(stdout, NULL, _IONBF, 0);
+
+
     int ret;
     for(int i = 1; i < argc; i++){
         ret = processCNF(argv[i]);
@@ -30,11 +25,12 @@ int main(int argc, const char* argv[]){
     do{
         write(1, &done, 1);
         len = read(0, pathBuffer, PATH_MAX);
-        ret = processCNF(pathBuffer);
+        if(len > 0)
+            ret = processCNF(pathBuffer);
 
         //tratamiento de errores del processCNF y del
     } while (len > 0);
-        
+    
     exit(0);
 }
 
@@ -58,11 +54,15 @@ int processCNF(const char *path){
         setvbuf(stdout, NULL, _IONBF, 0);
 
         int len = fread(minisatOutput, 1, OUTPUT_MAX, minisatStream);
-        minisatOutput[len] = 0;
-        printf("SlavePID = %d\n%s%s\n", getpid(), minisatOutput, path);
-
         pclose(minisatStream);
         //errores
+        minisatOutput[len] = 0;
+
+        char result[4096];
+        
+        len = sprintf(result, "SlavePID = %d\n%s%s", getpid(), minisatOutput, path);
+        write(1, result, len);
+        
 
         //Espero que master me diga que puedo seguir
         while(getchar() != DONE_CHAR);
