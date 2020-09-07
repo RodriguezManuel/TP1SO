@@ -6,14 +6,15 @@ int main(int argc, const char *argv[]){
     int shmFD = -1, fileCount;
     char *shmBase;
 
-    char buffer[20];
     sem_t *availBlocks;
 
     setvbuf(stdout, NULL, _IONBF, 0);
 
     if(argc == 1){
-        read(0, buffer, 20);
-        sscanf(buffer, "%d\n", &fileCount);
+        char buffer[32];
+        int n = read(0, buffer, 31);
+        buffer[n] = 0;
+        fileCount = atoi(buffer);
     }else if(argc == 2){
         fileCount = atoi(argv[1]);
     }else{
