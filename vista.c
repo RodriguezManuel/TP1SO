@@ -3,6 +3,7 @@
 void readShm(char **currentShm, sem_t *availBlocks);
 
 int main(int argc, const char *argv[]){
+    errno = 0;
     int shmFD = -1, fileCount;
     char *shmBase;
 
@@ -15,23 +16,23 @@ int main(int argc, const char *argv[]){
         int n = read(0, buffer, 31);
         buffer[n] = 0;
         fileCount = atoi(buffer);
-    }else if(argc == 2){
+    } else if(argc == 2){
         fileCount = atoi(argv[1]);
-    }else{
-        perror("CANTIDAD INCORRECTA DE PARAMETROS ?");
+    } else{
+        perror("Cantidad incorrecta de argumentos en Vista (main)");
         exit(1);
     }
 
     shmFD = shm_open(SHM_NAME, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);            
 
     if(shmFD == -1){
-        perror("Error en creacion de memoria compartida.");
+        perror("Error en creacion de memoria compartida en Vista (main)");
         exit(1);
     }
 
     shmBase = mmap(NULL, fileCount*BLOCK_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, shmFD, 0);
     if(shmBase == MAP_FAILED){
-        perror("Error en mapeo");
+        perror("Error en mmap en Vista (main)");
         exit(1);
     }
 
@@ -44,15 +45,11 @@ int main(int argc, const char *argv[]){
     }
   
     if(munmap(shmBase, fileCount*BLOCK_SIZE) == -1){
-        perror("Error en unmap.");
+        perror("Error en munmap en Vista (main)");
         exit(1);
     }
 
-    if(close(shmFD) == -1){
-        perror("Error en cierre de fd.");
-        exit(1);
-    }
-
+    close(shmFD);
     sem_close(availBlocks);
 
     return 0;

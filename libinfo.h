@@ -14,6 +14,7 @@
 #include <sys/stat.h>        /* For mode constants */
 #include <fcntl.h>           /* For O_* constants */
 #include <semaphore.h>
+#include <errno.h>
 
 #define SLEEPY_TIME 2
 

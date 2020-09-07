@@ -10,8 +10,9 @@ vista
 *.bash_history
 *.out
 
-#CNF Folder
+#CNF
 cnf/
+*.cnf
 
 #Result File
 resultFile
